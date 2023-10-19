@@ -24,7 +24,7 @@ def calculate_joint_angle(a,b,c):
 
 cap = cv2.VideoCapture(0)
 
-with mp_pose.Pose(min_detection_confidence = 0.5, min_tracking_confidence = 0.5) as pose:
+with mp_pose.Pose(min_detection_confidence = 0.5, min_tracking_confidence = 0.5) as pose: #confidence variable relates to accuracy of pose estimation
     while cap.isOpened():
         ret, frame = cap.read()
 
@@ -43,7 +43,7 @@ with mp_pose.Pose(min_detection_confidence = 0.5, min_tracking_confidence = 0.5)
         try:
             landmarks = results.pose_landmarks.landmark
 
-            # Get coordinates
+            # Get coordinates of landmarks using OpenCV pose estimation model
             left_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y]
             left_elbow = [landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x,landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y]
             left_wrist = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x,landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y]
@@ -61,18 +61,18 @@ with mp_pose.Pose(min_detection_confidence = 0.5, min_tracking_confidence = 0.5)
             right_foot = [landmarks[mp_pose.PoseLandmark.RIGHT_FOOT_INDEX.value].x,landmarks[mp_pose.PoseLandmark.RIGHT_FOOT_INDEX.value].y]
 
             
-            # Calculate angle
-            left_shoulder_angle = round(calculate_joint_angle(left_hip, left_shoulder, left_elbow), 2)
-            left_elbow_angle = round(calculate_joint_angle(left_shoulder, left_elbow, left_wrist), 2)
-            left_hip_angle = round(calculate_joint_angle(left_shoulder, left_hip, left_knee), 2)
-            left_knee_angle = round(calculate_joint_angle(left_hip, left_knee, left_ankle), 2)
-            left_ankle_angle = round(calculate_joint_angle(left_knee, left_ankle, left_foot), 2)
+            # Calculate joint angles bilaterally
+            left_shoulder_angle = int(round(calculate_joint_angle(left_hip, left_shoulder, left_elbow), 2))
+            left_elbow_angle = int(round(calculate_joint_angle(left_shoulder, left_elbow, left_wrist), 2))
+            left_hip_angle = int(round(calculate_joint_angle(left_shoulder, left_hip, left_knee), 2))
+            left_knee_angle = int(round(calculate_joint_angle(left_hip, left_knee, left_ankle), 2))
+            left_ankle_angle = int(round(calculate_joint_angle(left_knee, left_ankle, left_foot), 2))
 
-            right_elbow_angle = round(calculate_joint_angle(right_shoulder, right_elbow, right_wrist), 2)
-            right_shoulder_angle = round(calculate_joint_angle(right_hip, right_shoulder, right_elbow), 2)
-            right_hip_angle = round(calculate_joint_angle(right_shoulder, right_hip, right_knee), 2)
-            right_knee_angle = round(calculate_joint_angle(right_hip, right_knee, right_ankle), 2)
-            right_ankle_angle = round(calculate_joint_angle(right_knee, right_ankle, right_foot), 2)
+            right_elbow_angle = int(round(calculate_joint_angle(right_shoulder, right_elbow, right_wrist), 2))
+            right_shoulder_angle = int(round(calculate_joint_angle(right_hip, right_shoulder, right_elbow), 2))
+            right_hip_angle = int(round(calculate_joint_angle(right_shoulder, right_hip, right_knee), 2))
+            right_knee_angle = int(round(calculate_joint_angle(right_hip, right_knee, right_ankle), 2))
+            right_ankle_angle = int(round(calculate_joint_angle(right_knee, right_ankle, right_foot), 2))
         
             # Visualize left-sided joint angles on screen
             cv2.putText(image, str(left_shoulder_angle),
