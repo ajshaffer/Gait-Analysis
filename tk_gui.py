@@ -1,6 +1,13 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
+from PIL import Image, ImageTk
 import cv2
+import webcam_feed as wf
+import threading
+
+
+cap = None
+is_playing = False
 
 def resize_video(input_video_path, output_video_path, new_width):
     # Open the input video
@@ -38,69 +45,91 @@ def resize_video(input_video_path, output_video_path, new_width):
     input_cap.release()
     output_cap.release()
 
-def play_video():
-    global is_playing, cap
-    is_playing = True
-    while is_playing:
-        ret, frame = cap.read()
-        if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img_height, img_width, _ = frame.shape
-            label_aspect_ratio = label_width / label_height
-            frame_aspect_ratio = img_width / img_height
-            if frame_aspect_ratio > label_aspect_ratio:
-                new_width = label_width
-                new_height = int(new_width / frame_aspect_ratio)
-            else:
-                new_height = label_height
-                new_width = int(new_height * frame_aspect_ratio)
-            img = cv2.resize(frame, (new_width, new_height))
-            img = tk.PhotoImage(data=cv2.imencode('.png', img)[1].tobytes())
-            video_label.config(image=img)
-            video_label.image = img
-            root.update()
-            delay = int(1000 / cap.get(cv2.CAP_PROP_FPS))
-            root.after(delay, lambda: None)
-        else:
-            # Video has reached the end, restart playback from the beginning
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-def upload_video():
-    global cap, label_width, label_height
-    video_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.avi *.mkv *.mov")])
-    if video_path:
-        resize_video(video_path, "resized_video.mp4", label_width)  # Resize the video
-        cap = cv2.VideoCapture("resized_video.mp4")  # Open the resized video
-        label_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        label_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        play_video()
-
-def pause_video():
-    global is_playing
-    is_playing = False
 
 root = tk.Tk()
 root.title("Gait Analysis")
+root.geometry("1280x720")
+
+# Create a black box (Canvas) for video display
+video_canvas = tk.Canvas(root, bg="black", width=1280, height=600)
+video_canvas.pack(fill="x")
 
 # Create a frame to hold video and controls
 video_frame = ttk.Frame(root)
-video_frame.grid(row=0, column=0, padx=10, pady=10)
+video_frame.pack(expand=True, fill="both")
 
 # Create label for video display
-label_width, label_height = 640, 480  # Default dimensions
+label_width, label_height = 640, 480 
 video_label = ttk.Label(video_frame)
-video_label.grid(row=0, column=0, columnspan=3)
+video_label.pack(fill="both", expand=True)
 
-# Create buttons for controls
-play_button = ttk.Button(video_frame, text="Play", command=play_video)
-pause_button = ttk.Button(video_frame, text="Pause", command=pause_video)
-upload_button = ttk.Button(video_frame, text="Upload Video", command=upload_video)
 
-play_button.grid(row=1, column=0, padx=5, pady=5)
-pause_button.grid(row=1, column=1, padx=5, pady=5)
-upload_button.grid(row=2, column=0, columnspan=3, padx=5, pady=5)
+# Initialize the video capture in your GUI
+def start_video_capture():
+    global cap, is_playing
+    cap = cv2.VideoCapture(0)  # You can specify the video source here (e.g., 0 for webcam)
 
-cap = None
-is_playing = False
+    # Create a thread to display the video in the GUI
+    is_playing = True
+    pose_thread = threading.Thread(target=display_video)
+    pose_thread.start()
+
+
+
+
+# Function to display the video and pose estimation
+def display_video():
+    global cap, is_playing
+    while is_playing:
+        frame = wf.pose_estimation(cap)  # Get the processed frame from webcam_feed.py
+
+        if frame is not None:
+            update_video_display(frame)
+
+
+
+
+
+
+# Function to stop video capture
+def stop_video_capture():
+    global cap
+    if cap is not None:
+        cap.release()
+        cap = None
+
+
+
+def update_video_display(frame):
+    # Convert the frame to a PhotoImage
+    photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
+
+    # Update the video canvas with the new frame
+    video_canvas.create_image(0, 0, image=photo, anchor=tk.NW)
+    video_canvas.image = photo
+
+
+
+
+
+
+# Frame to hold buttons at the bottom
+button_frame = ttk.Frame(root)
+button_frame.pack(side="bottom")
+
+
+# Button to start video capture and pose estimation
+start_button = ttk.Button(button_frame, text="Start", command=start_video_capture)
+start_button.pack(side="left", padx=10, pady=10)
+
+# Button to stop video capture and pose estimation
+stop_button = ttk.Button(button_frame, text="Stop", command=stop_video_capture)
+stop_button.pack(side="left", padx=10, pady=10)
+
+# Button to close the application
+close_button = ttk.Button(button_frame, text="Close", command=root.destroy)
+close_button.pack(side="left", padx=10, pady=10)
+
 
 root.mainloop()
