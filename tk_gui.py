@@ -12,10 +12,10 @@ stop_flag = False
 
 root = tk.Tk()
 root.title("Gait Analysis")
-root.geometry("1280x720")
+root.geometry("3456x2234")
 
 # Create a black box (Canvas) for video display
-video_canvas = tk.Canvas(root, bg="black", width=1280, height=600)
+video_canvas = tk.Canvas(root, bg="black", width=1080, height=720)
 video_canvas.pack(fill="x")
 
 # Create a frame to hold video and controls
@@ -157,7 +157,7 @@ start_button = ttk.Button(button_frame, text="Start", command=start_video_captur
 start_button.pack(side="left", padx=10, pady=10)
 
 
-
+#***************
 # Create a dropdown menu for playback speed
 speed_options = ["100%", "75%", "50%", "25%"]
 speed_menu = ttk.OptionMenu(button_frame, speed_var, "100%", *speed_options)
@@ -166,6 +166,9 @@ speed_menu.pack(side="left", padx=10, pady=10)
 # Button to apply the selected speed
 speed_button = ttk.Button(button_frame, text="Change Speed", command=lambda: change_playback_speed(speed_var.get()))
 speed_button.pack(side="left", padx=10, pady=10)
+#***************
+
+
 
 
 
@@ -173,8 +176,6 @@ speed_button.pack(side="left", padx=10, pady=10)
 # Button to stop video capture and pose estimation
 pause_button = ttk.Button(button_frame, text="Pause", command=pause_video_capture)
 pause_button.pack(side="left", padx=10, pady=10)
-
-
 
 snapshot_button = ttk.Button(button_frame, text="Take Snapshot", command=take_snapshot)
 snapshot_button.pack(side="left", padx=10, pady=10)

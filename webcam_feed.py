@@ -38,9 +38,10 @@ def pose_estimation(cap):
             # Make detection of landmarks
             results = pose.process(image)
 
-            # Recolor back to BGR
-            image.flags.writeable = True
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            # # Recolor back to BGR
+            # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            # image.flags.writeable = True
+            
 
             # Extract body landmarks    
             try:
