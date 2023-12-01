@@ -49,16 +49,16 @@ def resize_video(input_video_path, output_video_path, new_width):
             break
 
         # Convert the frame to RGB color space (assuming BGR original color space)
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # Resize the frame
-        resized_frame = cv2.resize(frame_rgb, (new_width, new_height))
+        resized_frame = cv2.resize(frame, (new_width, new_height))
 
         # Convert the resized frame back to BGR color space
-        resized_frame_bgr = cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR)
+        # resized_frame_bgr = cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR)
 
         # Write the resized frame to the output video
-        output_cap.write(resized_frame_bgr)
+        output_cap.write(resized_frame)
 
     # Release the video captures and writer
     input_cap.release()
@@ -89,16 +89,9 @@ def display_video():
                 root.after(1, update_video_display)  # Schedule the update in the main thread
 
 
-
-
-
-
 def pause_video_capture():
     global is_playing
     is_playing = False
-
-
-
 
 
 def update_video_display():
@@ -112,22 +105,17 @@ def update_video_display():
     video_canvas.create_image(0, 0, image=photo, anchor=tk.NW)
     video_canvas.image = photo
 
-
-
-
 def take_snapshot():
     global cap
     if cap is not None:
         ret, frame = cap.read()
         if ret:
+            # Apply pose estimation on the frame
+            processed_frame = wf.pose_estimation(frame) 
             # Save the snapshot as an image file (e.g., PNG)
             file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png")])
             if file_path:
-                cv2.imwrite(file_path, frame)
-
-
-
-
+                cv2.imwrite(file_path, processed_frame)
 
 def change_playback_speed(speed):
     global cap
@@ -170,13 +158,12 @@ speed_button.pack(side="left", padx=10, pady=10)
 
 
 
-
-
-
 # Button to stop video capture and pose estimation
 pause_button = ttk.Button(button_frame, text="Pause", command=pause_video_capture)
 pause_button.pack(side="left", padx=10, pady=10)
 
+
+# Button to take a snapshot of the current frame and save it 
 snapshot_button = ttk.Button(button_frame, text="Take Snapshot", command=take_snapshot)
 snapshot_button.pack(side="left", padx=10, pady=10)
 

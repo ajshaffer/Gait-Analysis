@@ -24,7 +24,7 @@ def calculate_joint_angle(a,b,c):
 cap = cv2.VideoCapture(0)
 
 def pose_estimation(cap):
-    with mp_pose.Pose(min_detection_confidence = 0.5, min_tracking_confidence = 0.5) as pose: #confidence variable relates to accuracy of pose estimation (.5 is recommended)
+    with mp_pose.Pose(min_detection_confidence = 0.50, min_tracking_confidence = 0.50) as pose: #confidence variable relates to accuracy of pose estimation (.5 is recommended)
         while cap is not None and cap.isOpened():  # Check if cap is not None and is opened
             ret, frame = cap.read()
 
