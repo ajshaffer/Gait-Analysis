@@ -1,6 +1,32 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
+from PIL import Image, ImageTk
 import cv2
+import webcam_feed as wf
+import threading
+
+
+cap = None
+is_playing = False
+stop_flag = False
+
+root = tk.Tk()
+root.title("Gait Analysis")
+root.geometry("3456x2234")
+
+# Create a black box (Canvas) for video display
+video_canvas = tk.Canvas(root, bg="black", width=1080, height=720)
+video_canvas.pack(fill="x")
+
+# Create a frame to hold video and controls
+video_frame = ttk.Frame(root)
+video_frame.pack(expand=True, fill="both")
+
+# Create label for video display
+label_width, label_height = 640, 480 
+video_label = ttk.Label(video_frame)
+video_label.pack(fill="both", expand=True)
+
 
 def resize_video(input_video_path, output_video_path, new_width):
     # Open the input video
@@ -23,84 +49,127 @@ def resize_video(input_video_path, output_video_path, new_width):
             break
 
         # Convert the frame to RGB color space (assuming BGR original color space)
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # Resize the frame
-        resized_frame = cv2.resize(frame_rgb, (new_width, new_height))
+        resized_frame = cv2.resize(frame, (new_width, new_height))
 
         # Convert the resized frame back to BGR color space
-        resized_frame_bgr = cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR)
+        # resized_frame_bgr = cv2.cvtColor(resized_frame, cv2.COLOR_RGB2BGR)
 
         # Write the resized frame to the output video
-        output_cap.write(resized_frame_bgr)
+        output_cap.write(resized_frame)
 
     # Release the video captures and writer
     input_cap.release()
     output_cap.release()
 
-def play_video():
-    global is_playing, cap
+
+def start_video_capture():
+    global cap, is_playing
+    cap = cv2.VideoCapture(0)  
+
+    # Create a thread to display the video in the GUI
     is_playing = True
+    pose_thread = threading.Thread(target=display_video)
+    pose_thread.start()
+
+
+
+
+def display_video():
+    global cap, is_playing
     while is_playing:
-        ret, frame = cap.read()
-        if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img_height, img_width, _ = frame.shape
-            label_aspect_ratio = label_width / label_height
-            frame_aspect_ratio = img_width / img_height
-            if frame_aspect_ratio > label_aspect_ratio:
-                new_width = label_width
-                new_height = int(new_width / frame_aspect_ratio)
-            else:
-                new_height = label_height
-                new_width = int(new_height * frame_aspect_ratio)
-            img = cv2.resize(frame, (new_width, new_height))
-            img = tk.PhotoImage(data=cv2.imencode('.png', img)[1].tobytes())
-            video_label.config(image=img)
-            video_label.image = img
-            root.update()
-            delay = int(1000 / cap.get(cv2.CAP_PROP_FPS))
-            root.after(delay, lambda: None)
-        else:
-            # Video has reached the end, restart playback from the beginning
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        frame = wf.pose_estimation(cap)  # Get the processed frame from webcam_feed.py
 
-def upload_video():
-    global cap, label_width, label_height
-    video_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.avi *.mkv *.mov")])
-    if video_path:
-        resize_video(video_path, "resized_video.mp4", label_width)  # Resize the video
-        cap = cv2.VideoCapture("resized_video.mp4")  # Open the resized video
-        label_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        label_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        play_video()
+        if frame is not None:
+            global latest_frame
+            latest_frame = frame
+            if root:
+                root.after(1, update_video_display)  # Schedule the update in the main thread
 
-def pause_video():
+
+def pause_video_capture():
     global is_playing
     is_playing = False
 
-root = tk.Tk()
-root.title("Gait Analysis")
 
-# Create a frame to hold video and controls
-video_frame = ttk.Frame(root)
-video_frame.grid(row=0, column=0, padx=10, pady=10)
+def update_video_display():
+    global latest_frame
+    frame = latest_frame
 
-# Create label for video display
-label_width, label_height = 640, 480  # Default dimensions
-video_label = ttk.Label(video_frame)
-video_label.grid(row=0, column=0, columnspan=3)
+    # Convert the frame to a PhotoImage
+    photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
 
-# Create buttons for controls
-play_button = ttk.Button(video_frame, text="Play", command=play_video)
-pause_button = ttk.Button(video_frame, text="Pause", command=pause_video)
-upload_button = ttk.Button(video_frame, text="Upload Video", command=upload_video)
+    # Update the video canvas with the new frame
+    video_canvas.create_image(0, 0, image=photo, anchor=tk.NW)
+    video_canvas.image = photo
 
-play_button.grid(row=1, column=0, padx=5, pady=5)
-pause_button.grid(row=1, column=1, padx=5, pady=5)
-upload_button.grid(row=2, column=0, columnspan=3, padx=5, pady=5)
+def take_snapshot():
+    global cap
+    if cap is not None:
+        ret, frame = cap.read()
+        if ret:
+            # Apply pose estimation on the frame
+            processed_frame = wf.pose_estimation(frame) 
+            # Save the snapshot as an image file (e.g., PNG)
+            file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png")])
+            if file_path:
+                cv2.imwrite(file_path, processed_frame)
 
-cap = None
-is_playing = False
+def change_playback_speed(speed):
+    global cap
+    if cap is not None:
+        # Set the desired playback speed based on the selected option
+        if speed == "25%":
+            cap.set(cv2.CAP_PROP_FPS, 7.5)
+        elif speed == "50%":
+            cap.set(cv2.CAP_PROP_FPS, 15)
+        elif speed == "75%":
+            cap.set(cv2.CAP_PROP_FPS, 22.5)
+        # You can adjust the values to your desired playback speeds
+
+
+# Create a StringVar to hold the selected speed option
+speed_var = tk.StringVar()
+speed_var.set("100%")  # Default playback speed
+
+
+# Frame to hold buttons at the bottom
+button_frame = ttk.Frame(root)
+button_frame.pack(side="bottom")
+
+
+# Button to start video capture and pose estimation
+start_button = ttk.Button(button_frame, text="Start", command=start_video_capture)
+start_button.pack(side="left", padx=10, pady=10)
+
+
+#***************
+# Create a dropdown menu for playback speed
+speed_options = ["100%", "75%", "50%", "25%"]
+speed_menu = ttk.OptionMenu(button_frame, speed_var, "100%", *speed_options)
+speed_menu.pack(side="left", padx=10, pady=10)
+
+# Button to apply the selected speed
+speed_button = ttk.Button(button_frame, text="Change Speed", command=lambda: change_playback_speed(speed_var.get()))
+speed_button.pack(side="left", padx=10, pady=10)
+#***************
+
+
+
+# Button to stop video capture and pose estimation
+pause_button = ttk.Button(button_frame, text="Pause", command=pause_video_capture)
+pause_button.pack(side="left", padx=10, pady=10)
+
+
+# Button to take a snapshot of the current frame and save it 
+snapshot_button = ttk.Button(button_frame, text="Take Snapshot", command=take_snapshot)
+snapshot_button.pack(side="left", padx=10, pady=10)
+
+# Button to close the application
+close_button = ttk.Button(button_frame, text="Close", command=root.destroy)
+close_button.pack(side="left", padx=10, pady=10)
+
 
 root.mainloop()
